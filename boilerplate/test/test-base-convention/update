@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -e
+
+if [[ -z "$BOILERPLATE_SET_X" ]]; then
+    set -x
+fi
+
+# This script validates the vars we expect from the main `update` driver, and
+# many of those are set by common.sh, so don't source it.
+err() {
+  echo "$@" >&2
+  exit 1
+}
+
+echo "Validating CLI arguments"
+# Should always get exactly one arg
+[[ $# -eq 1 ]] || err "Expected exactly one CLI arg, but got $#: $@"
+case "$1" in
+    PRE|POST) ;;
+    *) err "Got an invalid CLI argument: '$1'"
+esac
+
+echo "Validating variables exported from the main update driver"
+[[ -z "$REPO_ROOT" ]] && err "Bad REPO_ROOT: '$REPO_ROOT'"
+[[ "$CONVENTION_ROOT" == "$REPO_ROOT/boilerplate" ]] || err "Bad CONVENTION_ROOT: '$CONVENTION_ROOT' ; expected $REPO_ROOT/boilerplate"
+# Test framework sets this via the `empty_repo` helper.
+[[ "$REPO_NAME" == "test-repo" ]] || err "Bad REPO_NAME: '$REPO_NAME'"
+# Granny switch to disable this check for weird tests like reverting to master
+if [[ -z "$SKIP_IMAGE_TAG_CHECK" ]]; then
+    # Update this when publishing a new image tag
+    [[ "$LATEST_IMAGE_TAG" == "image-v2.2.0" ]] || err "Bad LATEST_IMAGE_TAG: '$LATEST_IMAGE_TAG'"
+fi
