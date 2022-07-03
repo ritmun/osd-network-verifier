@@ -34,7 +34,7 @@ For more information see https://github.com/openshift/osd-network-verifier/blob/
 
 	// add sub commands
 	rootCmd.AddCommand(byovpc.NewCmdByovpc())
-	rootCmd.AddCommand(egress.NewCmdValidateEgress())
+	rootCmd.AddCommand(egress.ValidateEgressCmd)
 	rootCmd.AddCommand(dns.NewCmdValidateDns())
 
 	return rootCmd

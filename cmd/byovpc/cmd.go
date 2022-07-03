@@ -6,6 +6,7 @@ import (
 	"os"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/arguments"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
 )
@@ -13,7 +14,7 @@ import (
 var debug bool
 
 func NewCmdByovpc() *cobra.Command {
-	config := cloudclient.CmdOptions{}
+	config := arguments.Spec{}
 
 	byovpcCmd := &cobra.Command{
 		Use:   "byovpc",

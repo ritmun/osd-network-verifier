@@ -7,28 +7,13 @@ import (
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/arguments"
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
 const GCP = "GCP"
 const AWS = "AWS"
-
-// common commandline args
-type CmdOptions struct {
-	CloudType    string // not required. if provided, currently only supports "aws".
-	CloudTags    map[string]string
-	Debug        bool
-	Region       string
-	AwsProfile   string
-	InstanceType string
-	CloudImageID string
-	Timeout      time.Duration
-	KmsKeyID     string
-	//	test specific args
-	VpcSubnetID string
-	VpcID       string
-}
 
 var (
 	DefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
@@ -38,7 +23,10 @@ var (
 )
 
 // todo implement similar getter for AWS secrets and profile
-func getDefaultRegion() string {
+func getDefaultRegion(spec arguments.Spec) string {
+	if spec.Region != "" {
+		return spec.Region
+	}
 	val, present := os.LookupEnv(RegionEnvVarStr)
 	if present {
 		return val
@@ -65,25 +53,25 @@ type CloudClient interface {
 	VerifyDns(ctx context.Context, vpcID string) *output.Output
 }
 
-func getCloudClientType(options CmdOptions) string {
-	if options.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" || options.CloudType == "aws" {
+func getCloudClientType(spec arguments.Spec) string {
+	if spec.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" || spec.CloudType == "aws" {
 		return AWS
 	}
-	if options.CloudType == GCP {
+	if spec.CloudType == GCP {
 		return GCP
 	}
 	return "unknown"
 }
 
 func NewClient(ctx context.Context, logger ocmlog.Logger,
-	options CmdOptions) (CloudClient, error) {
+	spec arguments.Spec) (CloudClient, error) {
 
-	logger.Info(ctx, "Using region: %s", getDefaultRegion())
+	logger.Info(ctx, "Using region: %s", getDefaultRegion(spec))
 
-	switch getCloudClientType(options) {
+	switch getCloudClientType(spec) {
 	case AWS:
-		if options.AwsProfile != "" {
-			logger.Info(ctx, "Using AWS profile: %s.", options.AwsProfile)
+		if spec.AwsProfile != "" {
+			logger.Info(ctx, "Using AWS profile: %s.", spec.AwsProfile)
 		} else {
 			logger.Info(ctx, "Using AWS secret key")
 		}
@@ -93,15 +81,15 @@ func NewClient(ctx context.Context, logger ocmlog.Logger,
 			AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
 			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
-			VpcSubnetID:     options.VpcSubnetID,
-			VpcID:           options.VpcID,
-			CloudImageID:    options.CloudImageID,
-			Timeout:         options.Timeout,
-			KmsKeyID:        options.KmsKeyID,
-			Region:          getDefaultRegion(),
-			InstanceType:    options.InstanceType,
-			Tags:            options.CloudTags,
-			Profile:         options.AwsProfile,
+			VpcSubnetID:     spec.ExistingVpc.VpcSubnetID,
+			VpcID:           spec.ExistingVpc.VpcID,
+			CloudImageID:    spec.CloudImageID,
+			Timeout:         spec.TestSpec.Timeout,
+			KmsKeyID:        spec.KmsKeyID,
+			Region:          getDefaultRegion(spec),
+			InstanceType:    spec.InstanceType,
+			Tags:            spec.CloudTags,
+			Profile:         spec.AwsProfile,
 		}
 		return awsCloudClient.NewClient(clientInput)
 	default:
