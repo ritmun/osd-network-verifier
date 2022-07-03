@@ -33,7 +33,7 @@ func NewCmdByovpc() *cobra.Command {
 
 			client, err := cloudclient.NewClient(ctx, logger, config)
 			if err != nil {
-				logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudType, err.Error())
+				logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudProvider, err.Error())
 				os.Exit(1)
 			}
 

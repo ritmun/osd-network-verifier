@@ -54,10 +54,10 @@ type CloudClient interface {
 }
 
 func getCloudClientType(spec arguments.Spec) string {
-	if spec.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" || spec.CloudType == "aws" {
+	if spec.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" || spec.CloudProvider == "aws" {
 		return AWS
 	}
-	if spec.CloudType == GCP {
+	if spec.CloudProvider == GCP {
 		return GCP
 	}
 	return "unknown"

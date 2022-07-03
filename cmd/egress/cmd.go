@@ -106,7 +106,7 @@ func run(cmd *cobra.Command, argv []string) error {
 	}
 	client, err := cloudclient.NewClient(ctx, logger, args)
 	if err != nil {
-		logger.Error(ctx, "Error creating %s cloud client: %s", args.CloudType, err.Error())
+		logger.Error(ctx, "Error creating %s cloud client: %s", args.CloudProvider, err.Error())
 		os.Exit(1)
 	}
 	out := client.ValidateEgress(ctx)

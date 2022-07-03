@@ -12,15 +12,15 @@ type TestSpec struct {
 
 // common commandline args
 type Spec struct {
-	TestSpec     TestSpec
-	CloudType    string // not required. if provided, currently only supports "aws".
-	CloudTags    map[string]string
-	Region       string
-	AwsProfile   string
-	InstanceType string
-	CloudImageID string
-	KmsKeyID     string
-	ExistingVpc  VPC
+	TestSpec      TestSpec
+	CloudProvider string // not required. if provided, currently only supports "aws".
+	CloudTags     map[string]string
+	Region        string
+	AwsProfile    string
+	InstanceType  string
+	CloudImageID  string
+	KmsKeyID      string
+	ExistingVpc   VPC
 }
 
 type VPC struct {

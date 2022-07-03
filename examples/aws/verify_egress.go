@@ -12,11 +12,11 @@ import (
 func extendValidateEgressV1() {
 	//---------Set commandline args---------
 	spec := arguments.Spec{
-		Region:      "us-east-1",                       // optional
-		CloudTags:   map[string]string{"key1": "val1"}, // optional
-		AwsProfile:  "yourAwsProfile",                  // optional
-		CloudType:   "aws",                             // optional
-		ExistingVpc: arguments.VPC{VpcSubnetID: "subnet-id"},
+		Region:        "us-east-1",                       // optional
+		CloudTags:     map[string]string{"key1": "val1"}, // optional
+		AwsProfile:    "yourAwsProfile",                  // optional
+		CloudProvider: "aws",                             // optional
+		ExistingVpc:   arguments.VPC{VpcSubnetID: "subnet-id"},
 		TestSpec: arguments.TestSpec{
 			Debug:   false,
 			Timeout: 600,
