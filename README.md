@@ -11,8 +11,8 @@ of osd/rosa clusters to ensure the network configuration
 is correctly set up per OSD requirements listed on https://docs.openshift.com/container-platform/4.6/installing/installing_aws/installing-aws-vpc.html#installation-custom-aws-vpc-requirements_installing-aws-vpc
 
 It currently verifies:
-- Egress from VPC subnets to essential OSD domains
-- BYOVPC config requirements
+- Egress from VPC subnets to [essential OSD domains](https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites_prerequisites)
+- DNS resolution in a [VPC](https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html)
 
 The recommended workflow of diagnostic use of ONV is shown in the following flow diagram:
 
@@ -28,9 +28,17 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
 ## Contributing and Maintenance
 If interested, please fork this repo and create pull requests to the `main` branch.
 
-### Egress List
+### Golden AMI
+osd-network-verifier depends on these publicly available [AMIs](pkg/verifier/aws/aws_verifier.go#L24-L45) built from the [osd-network-verifier-golden-ami](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami) repo.
 
-This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.
+Golden AMI provides the following:
+- runtime environment setup (such as container engine, configurations, etc.)
+- building and embedding the validator binary which performs the individual checks to the endpoints
+
+### Egress Lists
+
+This lists of essential domains for egress verification should be maintained in the [GitLab repo](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami/-/blob/master/build/config/). Newly-added lists should be registered as "platform types" in [`helpers.go`](pkg/helpers/helpers.go#L46) using the list file's extensionless name as the value (e.g., abc.yaml should be registered as `PlatformABC     string = "abc"`). Finally, the `--platform` help message and value handling logic in [`cmd.go`](cmd/egress/cmd.go) should also be updated.
+
 ### IAM Permission Requirement List
 
 Version ID [required for IAM support role](docs/aws/aws.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html).

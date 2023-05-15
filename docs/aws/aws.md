@@ -60,12 +60,41 @@ Ensure that the AWS credentials being used have the following permissions. (This
         "ec2:DescribeInstanceTypes",
         "ec2:GetConsoleOutput",
         "ec2:TerminateInstances",
-        "ec2:DescribeVpcAttribute"
+        "ec2:DescribeVpcAttribute",
+        "ec2:CreateSecurityGroup",
+        "ec2:DeleteSecurityGroup",
+        "ec2:DescribeSecurityGroup",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:DescribeSubnets"
       ],
       "Resource": "*"
     }
   ]
 }
+```
+
+The SRE only needs below permissions because we should supply Security Group ID by running `./osd-network-verifier egress --security-group-id <SG_ID>`:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:RunInstances",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceTypes",
+        "ec2:GetConsoleOutput",
+        "ec2:TerminateInstances",
+        "ec2:DescribeVpcAttribute",
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+
 ```
  
 ## Available Tools ##
@@ -99,30 +128,40 @@ repeat the verification process for each subnet ID.
          ```
           If the image id is not provided, it is defaulted to an image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
    for the same region where your subnet is.
+      3. platform: This parameter dictates for which set of endpoints the verifier should test. If testing a subnet that hosts (or will host) a traditional OSD/ROSA cluster, set this to `aws` (or leave blank). If you're instead testing a subnet hosting a HyperShift Hosted Cluster (*not* a hosted control plane/management cluster) on AWS, set this to `hostedcluster`.
 
    5. Execute:
 
        ```shell        
-      # using AWS profile 
-      ./osd-network-verifier egress --subnet-id $SUBNET_ID --profile $AWS_PROFILE
+      # using AWS profile on an OSD/ROSA cluster
+      ./osd-network-verifier egress --platform aws --subnet-id $SUBNET_ID --profile $AWS_PROFILE
       
-      # using AWS secret 
+      # using AWS secret on a HyperShift hosted cluster
         AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY  \
-      ./osd-network-verifier egress --subnet-id $SUBNET_ID  
+      ./osd-network-verifier egress --platform hostedcluster --subnet-id $SUBNET_ID  
         ```
    
         Additional optional flags for overriding defaults:
-      ```shell
-      --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2 (default [osd-network-verifier=owned,red-hat-managed=true,Name=osd-network-verifier])
-      --debug                       (optional) if true, enable additional debug-level logging
-      --image-id string             (optional) cloud image for the compute instance
-      --instance-type string        (optional) compute instance type (default "t3.micro")
-      --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
-      --region string               (optional) compute instance region. If absent, environment var AWS_REGION will be used, if set (default "us-east-2")
-      --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored.
-      --subnet-id string            source subnet ID
-      --timeout duration            (optional) timeout for individual egress verification requests (default 2s). If timeout is less than 2s, it would likely cause false negatives test results.
-         ```
+        ```shell
+        --cacert string               (optional) path to cacert file to be used upon https requests being made by verifier
+        --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2 (default [])
+        --debug                       (optional) if true, enable additional debug-level logging
+        --http-proxy string           (optional) http-proxy to be used upon http requests being made by verifier, format: http://user:pass@x.x.x.x:8978
+        --https-proxy string          (optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978
+        --image-id string             (optional) cloud image for the compute instance
+        --instance-type string        (optional) compute instance type
+        --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
+        --no-tls                      (optional) if true, skip client-side SSL certificate validation
+        --platform string             (optional) infra platform type, which determines which endpoints to test. Either 'aws', 'gcp', or 'hostedcluster' (hypershift) (default "aws")
+        --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored
+        --region string               (optional) compute instance region. If absent, environment var AWS_REGION = us-east-2 and GCP_REGION = us-east1 will be used
+        --security-group-id string    security group ID to attach to the created EC2 instance
+        --skip-termination            (optional) Skip instance termination to allow further debugging
+        --subnet-id string            source subnet ID
+        --terminate-debug string      (optional) Takes the debug instance ID and terminates it
+        --timeout duration            (optional) timeout for individual egress verification requests (default 2s)
+        --vpc-name string             (optional unless --platform='gcp') VPC name where GCP cluster is installed
+        ```
    
        Get cli help:
     
@@ -138,10 +177,10 @@ repeat the verification process for each subnet ID.
 ```shell
 ./osd-network-verifier egress \
     --subnet-id <subnet_id>  \
-    --http-proxy http://sre:123@18.234.52.122:8888 \ 
-    --https-proxy https://sre:123@18.234.52.122:8888 \
-    --cacert mitmproxy-ca.pem \
-    --no-tls
+    --http-proxy http://sre:123@18.18.18.18:8888 \
+    --https-proxy https://sre:123@18.18.18.18:8888 \
+    --cacert path-to-ca.pem \
+    --no-tls # optional, used to bypass ca.pem validation (https)
 ```
 
 
@@ -166,8 +205,8 @@ Description:
 3. The [`USERDATA`](../../pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
 
    1. installs docker
-   2. runs the [osd-network-verifier docker image](https://github.com/openshift/osd-network-verifier/tree/main/build) included with this source.
-      (The image is also published at: https://quay.io/repository/app-sre/osd-network-verifier)
+   2. runs [validator's docker image](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami/-/blob/master/build/bin/network-validator.go). Firstly, the image of the validator is tried to be pulled. If it fails, then the docker image baked into the AMI is used.
+   (The image is also published at: https://quay.io/repository/app-sre/osd-network-verifier)
    3. The entry point of the osd-network-verifier docker image then executes the main egress verification script
       ```shell
       network-validator --timeout=2s --config=config/config.yaml
@@ -205,6 +244,3 @@ See the egress golang examples above, and replace the line starting with `out :=
 ```go
 out := cli.VerifyDns(context.TODO(), "vpcID")
 ```
-
-### 3. BYOVPC Configurations Verification ###
-(TODO: add doc)
